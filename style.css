@@ -483,6 +483,7 @@ input:focus, select:focus {
   object-fit: cover;
   flex: none;
   background: var(--bg);
+  cursor: pointer;
 }
 
 .plant-photo-placeholder {

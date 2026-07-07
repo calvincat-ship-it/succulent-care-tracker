@@ -550,7 +550,15 @@ async function hydratePlantPhotos() {
   }
 }
 
-plantListEl.addEventListener('click', (e) => {
+plantListEl.addEventListener('click', async (e) => {
+  const photo = e.target.closest('.plant-photo');
+  if (photo) {
+    const photoId = photo.closest('.plant-photo-slot')?.dataset.photoId;
+    if (!photoId) return;
+    const blob = await getPhoto(photoId);
+    if (blob) openPhotoViewer(blob);
+    return;
+  }
   const btn = e.target.closest('button[data-action]');
   if (!btn) return;
   const card = btn.closest('.plant-card');
@@ -791,7 +799,15 @@ document.getElementById('deleteAfterBtn').addEventListener('click', async () => 
   renderAll();
 });
 
-// ---- Photo viewer (unused directly but kept for future per-plant photo view) ----
+// ---- Photo viewer ----
+
+function openPhotoViewer(blob) {
+  const viewer = document.getElementById('photoViewer');
+  const url = URL.createObjectURL(blob);
+  document.getElementById('photoViewerImg').src = url;
+  viewer.dataset.objectUrl = url;
+  viewer.hidden = false;
+}
 
 function closePhotoViewer() {
   const viewer = document.getElementById('photoViewer');
