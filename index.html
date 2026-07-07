@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#3f7d5c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>寶貝多肉APP</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="app-header">
+  <h1>寶貝多肉APP</h1>
+  <div class="header-actions">
+    <button id="settingsBtn" class="icon-btn" title="設定" aria-label="設定">⚙</button>
+  </div>
+</header>
+
+<main>
+  <section id="categoryCards"></section>
+
+  <section class="card">
+    <h2 id="plantFormTitle">新增植物</h2>
+    <form id="plantForm">
+      <input type="hidden" id="editPlantId">
+      <label class="full">種類
+        <select id="fieldSpecies" required>
+          <option value="succulent">景天科</option>
+          <option value="cactus">仙人球</option>
+          <option value="haworthia">玉露</option>
+        </select>
+      </label>
+      <div class="form-row">
+        <label>購入日期
+          <input type="date" id="fieldPurchaseDate" required>
+        </label>
+        <label>購入金額 <span class="unit">元</span>
+          <input type="number" id="fieldPurchasePrice" inputmode="numeric" min="0">
+        </label>
+      </div>
+      <label class="full">注意事項
+        <input type="text" id="fieldPlantNote" maxlength="60" placeholder="選填">
+      </label>
+      <div class="photo-row">
+        <button type="button" id="photoCaptureBtn" class="secondary-btn">📷 拍攝或上傳照片</button>
+        <input type="file" accept="image/*" capture="environment" id="fieldPhotoInput" hidden>
+        <div id="photoPreviewWrap" class="photo-preview-wrap" hidden>
+          <img id="photoPreview" alt="照片預覽">
+          <button type="button" id="removePhotoBtn" class="text-danger-btn">移除照片</button>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="primary-btn" id="plantSubmitBtn">新增植物</button>
+        <button type="button" class="secondary-btn" id="cancelPlantEditBtn" hidden>取消編輯</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="chart-header">
+      <button type="button" id="plantListToggleBtn" class="section-toggle" aria-expanded="true">
+        <span id="plantListToggleIcon">▾</span> 我的多肉
+      </button>
+      <select id="plantListFilter">
+        <option value="all">全部</option>
+        <option value="succulent">景天科</option>
+        <option value="cactus">仙人球</option>
+        <option value="haworthia">玉露</option>
+      </select>
+    </div>
+    <div id="plantListBody">
+      <div id="plantList" class="plant-list"></div>
+      <p id="plantEmptyState" class="empty-state" hidden>尚無植物，新增第一盆多肉吧！</p>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>彙整</h2>
+    <div class="summary-stats">
+      <div class="summary-item">
+        <span class="summary-label">總數量</span>
+        <span class="summary-value" id="totalCountValue">0</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">總金額</span>
+        <span class="summary-value" id="totalPriceValue">0 元</span>
+      </div>
+    </div>
+    <div class="species-breakdown" id="speciesCountBreakdown"></div>
+    <div class="species-breakdown" id="speciesPriceBreakdown"></div>
+
+    <div class="chart-header">
+      <h3>趨勢圖</h3>
+      <select id="trendSelect">
+        <option value="totalCount">總數量</option>
+        <option value="succulentCount">景天科數量</option>
+        <option value="cactusCount">仙人球數量</option>
+        <option value="haworthiaCount">玉露數量</option>
+        <option value="totalPrice">總金額</option>
+      </select>
+    </div>
+    <canvas id="trendChart" height="180"></canvas>
+  </section>
+</main>
+
+<div id="toast" class="toast" hidden></div>
+
+<div id="settingsModal" class="modal-backdrop" hidden>
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <h2>設定</h2>
+      <button type="button" id="closeSettingsBtn" class="icon-btn" aria-label="關閉">✕</button>
+    </div>
+    <form id="settingsForm">
+      <h3 class="settings-section-title">各類植物應澆水天數設定</h3>
+      <div class="settings-species-row" data-species="succulent">
+        <span class="settings-species-label">景天科</span>
+        <label>下限 <input type="number" id="waterMin_succulent" min="0" max="365"></label>
+        <label>上限 <input type="number" id="waterMax_succulent" min="0" max="365"></label>
+      </div>
+      <div class="settings-species-row" data-species="cactus">
+        <span class="settings-species-label">仙人球</span>
+        <label>下限 <input type="number" id="waterMin_cactus" min="0" max="365"></label>
+        <label>上限 <input type="number" id="waterMax_cactus" min="0" max="365"></label>
+      </div>
+      <div class="settings-species-row" data-species="haworthia">
+        <span class="settings-species-label">玉露</span>
+        <label>下限 <input type="number" id="waterMin_haworthia" min="0" max="365"></label>
+        <label>上限 <input type="number" id="waterMax_haworthia" min="0" max="365"></label>
+      </div>
+
+      <hr class="settings-divider">
+
+      <h3 class="settings-section-title">各類植物應施肥天數設定</h3>
+      <div class="settings-species-row" data-species="succulent">
+        <span class="settings-species-label">景天科</span>
+        <label>上限 <input type="number" id="fertilizeMax_succulent" min="0" max="365"></label>
+      </div>
+      <div class="settings-species-row" data-species="cactus">
+        <span class="settings-species-label">仙人球</span>
+        <label>上限 <input type="number" id="fertilizeMax_cactus" min="0" max="365"></label>
+      </div>
+      <div class="settings-species-row" data-species="haworthia">
+        <span class="settings-species-label">玉露</span>
+        <label>上限 <input type="number" id="fertilizeMax_haworthia" min="0" max="365"></label>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="primary-btn">儲存設定</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="photoViewer" class="modal-backdrop photo-viewer" hidden>
+  <div class="photo-viewer-inner">
+    <button type="button" id="closePhotoViewerBtn" class="icon-btn" aria-label="關閉">✕</button>
+    <img id="photoViewerImg" alt="植物照片">
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
