@@ -17,17 +17,30 @@
 <header class="app-header">
   <h1>寶貝多肉APP</h1>
   <div class="header-actions">
+    <button id="addPlantBtn" class="icon-btn" title="新增植物" aria-label="新增植物">➕</button>
+    <button id="plantListBtn" class="icon-btn" title="我的多肉" aria-label="我的多肉">📋</button>
+    <button id="summaryBtn" class="icon-btn" title="彙整" aria-label="彙整">📊</button>
     <button id="settingsBtn" class="icon-btn" title="設定" aria-label="設定">⚙</button>
   </div>
 </header>
 
 <main>
   <section id="categoryCards"></section>
+</main>
 
-  <section class="card">
-    <h2 id="plantFormTitle">新增植物</h2>
+<div id="toast" class="toast" hidden></div>
+
+<div id="addPlantModal" class="modal-backdrop" hidden>
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <h2 id="plantFormTitle">新增植物</h2>
+      <button type="button" id="closeAddPlantBtn" class="icon-btn" aria-label="關閉">✕</button>
+    </div>
     <form id="plantForm">
       <input type="hidden" id="editPlantId">
+      <label class="full">品名
+        <input type="text" id="fieldPlantName" maxlength="30" placeholder="為這盆植物取個名字" required>
+      </label>
       <label class="full">種類
         <select id="fieldSpecies" required>
           <option value="succulent">景天科</option>
@@ -59,13 +72,17 @@
         <button type="button" class="secondary-btn" id="cancelPlantEditBtn" hidden>取消編輯</button>
       </div>
     </form>
-  </section>
+  </div>
+</div>
 
-  <section class="card">
+<div id="plantListModal" class="modal-backdrop" hidden>
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <h2>我的多肉</h2>
+      <button type="button" id="closePlantListBtn" class="icon-btn" aria-label="關閉">✕</button>
+    </div>
     <div class="chart-header">
-      <button type="button" id="plantListToggleBtn" class="section-toggle" aria-expanded="true">
-        <span id="plantListToggleIcon">▾</span> 我的多肉
-      </button>
+      <span></span>
       <select id="plantListFilter">
         <option value="all">全部</option>
         <option value="succulent">景天科</option>
@@ -77,10 +94,15 @@
       <div id="plantList" class="plant-list"></div>
       <p id="plantEmptyState" class="empty-state" hidden>尚無植物，新增第一盆多肉吧！</p>
     </div>
-  </section>
+  </div>
+</div>
 
-  <section class="card">
-    <h2>彙整</h2>
+<div id="summaryModal" class="modal-backdrop" hidden>
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <h2>彙整</h2>
+      <button type="button" id="closeSummaryBtn" class="icon-btn" aria-label="關閉">✕</button>
+    </div>
     <div class="summary-stats">
       <div class="summary-item">
         <span class="summary-label">總數量</span>
@@ -105,10 +127,8 @@
       </select>
     </div>
     <canvas id="trendChart" height="180"></canvas>
-  </section>
-</main>
-
-<div id="toast" class="toast" hidden></div>
+  </div>
+</div>
 
 <div id="settingsModal" class="modal-backdrop" hidden>
   <div class="modal-sheet">
@@ -150,10 +170,38 @@
         <label>上限 <input type="number" id="fertilizeMax_haworthia" min="0" max="365"></label>
       </div>
 
+      <hr class="settings-divider">
+
+      <h3 class="settings-section-title">各類植物照護注意事項</h3>
+      <div class="settings-note-row" data-species="succulent">
+        <span class="settings-species-label">景天科</span>
+        <textarea id="categoryNote_succulent" class="category-note" placeholder="照護注意事項（日照、澆水、施肥）"></textarea>
+      </div>
+      <div class="settings-note-row" data-species="cactus">
+        <span class="settings-species-label">仙人球</span>
+        <textarea id="categoryNote_cactus" class="category-note" placeholder="照護注意事項（日照、澆水、施肥）"></textarea>
+      </div>
+      <div class="settings-note-row" data-species="haworthia">
+        <span class="settings-species-label">玉露</span>
+        <textarea id="categoryNote_haworthia" class="category-note" placeholder="照護注意事項（日照、澆水、施肥）"></textarea>
+      </div>
+
       <div class="form-actions">
         <button type="submit" class="primary-btn">儲存設定</button>
       </div>
     </form>
+
+    <hr class="settings-divider">
+
+    <h3 class="settings-section-title">刪除</h3>
+    <div class="danger-actions">
+      <button type="button" id="resetCareBtn" class="danger-btn">僅刪除澆水及施肥紀錄（含分類卡片及我的多肉清單）</button>
+      <button type="button" id="resetAllBtn" class="danger-btn">一鍵刪除所有資料，回歸未使用狀態</button>
+      <div class="delete-after-row">
+        <input type="date" id="deleteAfterDate">
+        <button type="button" id="deleteAfterBtn" class="danger-btn">刪除此日期以後的資料</button>
+      </div>
+    </div>
   </div>
 </div>
 

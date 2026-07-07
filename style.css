@@ -153,19 +153,6 @@ input:focus, select:focus {
   padding: 4px 2px;
 }
 
-.section-toggle {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--primary-dark);
-}
-
 .chart-header {
   display: flex;
   align-items: center;
@@ -283,6 +270,54 @@ input:focus, select:focus {
   gap: 4px;
 }
 
+.settings-note-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.settings-note-row .settings-species-label {
+  padding-bottom: 0;
+  padding-top: 9px;
+}
+
+.settings-note-row .category-note {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.danger-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.danger-btn {
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #fdecea;
+  color: var(--overdue);
+}
+
+.delete-after-row {
+  display: flex;
+  gap: 8px;
+}
+
+.delete-after-row input[type="date"] {
+  flex: 1;
+}
+
+.delete-after-row .danger-btn {
+  flex: none;
+  white-space: nowrap;
+}
+
 .photo-row {
   display: flex;
   flex-direction: column;
@@ -360,6 +395,13 @@ input:focus, select:focus {
   resize: vertical;
   min-height: 40px;
   margin-bottom: 10px;
+}
+
+.category-note-display {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 10px;
+  white-space: pre-wrap;
 }
 
 .care-row {
@@ -468,6 +510,12 @@ input:focus, select:focus {
   align-items: center;
   justify-content: space-between;
   gap: 6px;
+}
+
+.plant-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
 }
 
 .plant-species-tag {

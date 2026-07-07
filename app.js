@@ -1,5 +1,6 @@
 const PLANTS_KEY = 'sct_plants_v1';
 const CATEGORY_NOTES_KEY = 'sct_category_notes_v1';
+const CATEGORY_CARE_KEY = 'sct_category_care_v1';
 const SETTINGS_KEY = 'sct_settings_v1';
 const PHOTO_DB_NAME = 'sct_photos_db';
 const PHOTO_STORE = 'photos';
@@ -7,7 +8,7 @@ const PHOTO_STORE = 'photos';
 const SPECIES_LIST = ['succulent', 'cactus', 'haworthia'];
 const SPECIES_LABELS = { succulent: '景天科', cactus: '仙人球', haworthia: '玉露' };
 
-/** @typedef {{id:string,species:string,photoId:string|null,purchaseDate:string,purchasePrice:number,note:string,lastWatered:string|null,lastFertilized:string|null,createdAt:string,deleted:boolean,deletedAt:string|null}} Plant */
+/** @typedef {{id:string,name:string,species:string,photoId:string|null,purchaseDate:string,purchasePrice:number,note:string,lastWatered:string|null,lastFertilized:string|null,createdAt:string,deleted:boolean,deletedAt:string|null}} Plant */
 
 // ---- IndexedDB photo storage ----
 
@@ -45,6 +46,16 @@ async function deletePhoto(id) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(PHOTO_STORE, 'readwrite');
     tx.objectStore(PHOTO_STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function clearAllPhotos() {
+  const db = await openPhotoDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PHOTO_STORE, 'readwrite');
+    tx.objectStore(PHOTO_STORE).clear();
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
@@ -93,12 +104,15 @@ function savePlants(list) {
   localStorage.setItem(PLANTS_KEY, JSON.stringify(list));
 }
 
+function defaultCategoryNotes() {
+  return { succulent: '', cactus: '', haworthia: '' };
+}
+
 function loadCategoryNotes() {
-  const defaults = { succulent: '', cactus: '', haworthia: '' };
   try {
-    return { ...defaults, ...JSON.parse(localStorage.getItem(CATEGORY_NOTES_KEY)) };
+    return { ...defaultCategoryNotes(), ...JSON.parse(localStorage.getItem(CATEGORY_NOTES_KEY)) };
   } catch {
-    return defaults;
+    return defaultCategoryNotes();
   }
 }
 
@@ -106,16 +120,43 @@ function saveCategoryNotes(notes) {
   localStorage.setItem(CATEGORY_NOTES_KEY, JSON.stringify(notes));
 }
 
-function loadSettings() {
-  const defaults = {
+function defaultCategoryCare() {
+  return {
+    succulent: { lastWatered: null, lastFertilized: null },
+    cactus: { lastWatered: null, lastFertilized: null },
+    haworthia: { lastWatered: null, lastFertilized: null },
+  };
+}
+
+function loadCategoryCare() {
+  let stored = {};
+  try {
+    stored = JSON.parse(localStorage.getItem(CATEGORY_CARE_KEY)) || {};
+  } catch {}
+  const defaults = defaultCategoryCare();
+  const merged = {};
+  SPECIES_LIST.forEach((sp) => { merged[sp] = { ...defaults[sp], ...(stored[sp] || {}) }; });
+  return merged;
+}
+
+function saveCategoryCare(care) {
+  localStorage.setItem(CATEGORY_CARE_KEY, JSON.stringify(care));
+}
+
+function defaultSettings() {
+  return {
     succulent: { waterMin: 5, waterMax: 14, fertilizeMax: 60 },
     cactus: { waterMin: 7, waterMax: 21, fertilizeMax: 60 },
     haworthia: { waterMin: 5, waterMax: 14, fertilizeMax: 60 },
   };
+}
+
+function loadSettings() {
   let stored = {};
   try {
     stored = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {};
   } catch {}
+  const defaults = defaultSettings();
   const merged = {};
   SPECIES_LIST.forEach((sp) => { merged[sp] = { ...defaults[sp], ...(stored[sp] || {}) }; });
   return merged;
@@ -137,12 +178,6 @@ function daysBetween(dateStr) {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   return Math.round((today - d) / 86400000);
-}
-
-function maxDate(dates) {
-  const valid = dates.filter(Boolean);
-  if (valid.length === 0) return null;
-  return valid.reduce((a, b) => (b > a ? b : a));
 }
 
 function fmtDate(dateStr) {
@@ -176,11 +211,11 @@ function classifyFertilizing(dateStr, cfg) {
 
 let plants = loadPlants();
 let categoryNotes = loadCategoryNotes();
+let categoryCare = loadCategoryCare();
 let settings = loadSettings();
 let pendingPhotoBlob = null;
 let pendingPhotoRemoved = false;
 let currentPhotoId = null;
-let plantListCollapsed = localStorage.getItem('sct_plantlist_collapsed') === '1';
 let plantPhotoUrls = [];
 
 const plantForm = document.getElementById('plantForm');
@@ -194,6 +229,41 @@ const plantEmptyState = document.getElementById('plantEmptyState');
 const plantListFilter = document.getElementById('plantListFilter');
 const toast = document.getElementById('toast');
 const trendSelect = document.getElementById('trendSelect');
+
+// ---- Modals (新增植物 / 我的多肉 / 彙整) ----
+
+const addPlantModal = document.getElementById('addPlantModal');
+const plantListModal = document.getElementById('plantListModal');
+const summaryModal = document.getElementById('summaryModal');
+
+function openAddPlant() { addPlantModal.hidden = false; }
+function closeAddPlant() { addPlantModal.hidden = true; }
+
+function openPlantList() {
+  plantListModal.hidden = false;
+  renderPlantList();
+  hydratePlantPhotos();
+}
+function closePlantList() { plantListModal.hidden = true; }
+
+function openSummary() {
+  summaryModal.hidden = false;
+  renderSummary();
+  renderChart();
+}
+function closeSummary() { summaryModal.hidden = true; }
+
+document.getElementById('addPlantBtn').addEventListener('click', () => { resetPlantForm(); openAddPlant(); });
+document.getElementById('closeAddPlantBtn').addEventListener('click', closeAddPlant);
+addPlantModal.addEventListener('click', (e) => { if (e.target === addPlantModal) closeAddPlant(); });
+
+document.getElementById('plantListBtn').addEventListener('click', openPlantList);
+document.getElementById('closePlantListBtn').addEventListener('click', closePlantList);
+plantListModal.addEventListener('click', (e) => { if (e.target === plantListModal) closePlantList(); });
+
+document.getElementById('summaryBtn').addEventListener('click', openSummary);
+document.getElementById('closeSummaryBtn').addEventListener('click', closeSummary);
+summaryModal.addEventListener('click', (e) => { if (e.target === summaryModal) closeSummary(); });
 
 function showToast(msg) {
   toast.textContent = msg;
@@ -262,6 +332,7 @@ async function startEditPlant(id) {
   const p = plants.find((x) => x.id === id);
   if (!p) return;
   editPlantIdInput.value = p.id;
+  document.getElementById('fieldPlantName').value = p.name || '';
   document.getElementById('fieldSpecies').value = p.species;
   document.getElementById('fieldPurchaseDate').value = p.purchaseDate;
   document.getElementById('fieldPurchasePrice').value = p.purchasePrice || '';
@@ -278,10 +349,11 @@ async function startEditPlant(id) {
   } else {
     hidePhotoPreview();
   }
-  window.scrollTo({ top: plantForm.offsetTop - 20, behavior: 'smooth' });
+  closePlantList();
+  openAddPlant();
 }
 
-cancelPlantEditBtn.addEventListener('click', resetPlantForm);
+cancelPlantEditBtn.addEventListener('click', () => { resetPlantForm(); closeAddPlant(); });
 
 async function deletePlant(id) {
   const p = plants.find((x) => x.id === id);
@@ -298,6 +370,7 @@ async function deletePlant(id) {
 
 plantForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  const name = document.getElementById('fieldPlantName').value.trim();
   const species = document.getElementById('fieldSpecies').value;
   const purchaseDate = document.getElementById('fieldPurchaseDate').value;
   const purchasePrice = Number(document.getElementById('fieldPurchasePrice').value) || 0;
@@ -319,12 +392,13 @@ plantForm.addEventListener('submit', async (e) => {
   const editId = editPlantIdInput.value;
   if (editId) {
     plants = plants.map((p) => p.id === editId
-      ? { ...p, species, purchaseDate, purchasePrice, note, photoId }
+      ? { ...p, name, species, purchaseDate, purchasePrice, note, photoId }
       : p);
     showToast('已更新植物資料');
   } else {
     plants.push({
       id: crypto.randomUUID(),
+      name,
       species,
       photoId,
       purchaseDate,
@@ -340,6 +414,7 @@ plantForm.addEventListener('submit', async (e) => {
   }
   savePlants(plants);
   resetPlantForm();
+  closeAddPlant();
   renderAll();
 });
 
@@ -354,8 +429,8 @@ function renderCategoryCard(species) {
   const inCategory = plants.filter((p) => !p.deleted && p.species === species);
   const count = inCategory.length;
   const cfg = settings[species];
-  const lastWatered = maxDate(inCategory.map((p) => p.lastWatered));
-  const lastFertilized = maxDate(inCategory.map((p) => p.lastFertilized));
+  const lastWatered = categoryCare[species].lastWatered;
+  const lastFertilized = categoryCare[species].lastFertilized;
   const waterInfo = count > 0 ? classifyWatering(lastWatered, cfg) : { cls: 'overdue', label: '尚無植物', days: null };
   const fertInfo = count > 0 ? classifyFertilizing(lastFertilized, cfg) : { cls: 'overdue', label: '尚無植物', days: null };
   const note = categoryNotes[species] || '';
@@ -366,7 +441,7 @@ function renderCategoryCard(species) {
         <h2>${label}</h2>
         <span class="category-count">${count} 盆</span>
       </div>
-      <textarea class="category-note" data-species="${species}" placeholder="照護注意事項（日照、澆水、施肥）">${escapeHtml(note)}</textarea>
+      <p class="category-note-display">${note ? escapeHtml(note) : '尚未設定照護注意事項'}</p>
       <div class="care-row">
         <div class="care-info">
           <span class="care-label">澆水・上次 ${fmtDate(lastWatered)}${waterInfo.days != null ? `（距今 ${waterInfo.days} 天）` : ''}</span>
@@ -393,21 +468,18 @@ categoryCardsEl.addEventListener('click', (e) => {
   if (btn.dataset.action === 'water-all') {
     plants = plants.map((p) => (!p.deleted && p.species === species) ? { ...p, lastWatered: today } : p);
     savePlants(plants);
+    categoryCare[species].lastWatered = today;
+    saveCategoryCare(categoryCare);
     showToast(`已將全部${SPECIES_LABELS[species]}標記為已澆水`);
     renderAll();
   } else if (btn.dataset.action === 'fertilize-all') {
     plants = plants.map((p) => (!p.deleted && p.species === species) ? { ...p, lastFertilized: today } : p);
     savePlants(plants);
+    categoryCare[species].lastFertilized = today;
+    saveCategoryCare(categoryCare);
     showToast(`已將全部${SPECIES_LABELS[species]}標記為已施肥`);
     renderAll();
   }
-});
-
-categoryCardsEl.addEventListener('focusout', (e) => {
-  if (!e.target.matches('.category-note')) return;
-  const species = e.target.dataset.species;
-  categoryNotes[species] = e.target.value;
-  saveCategoryNotes(categoryNotes);
 });
 
 // ---- Plant list ----
@@ -437,12 +509,13 @@ function renderPlantList() {
         </div>
         <div class="plant-body">
           <div class="plant-header-row">
-            <span class="plant-species-tag">${SPECIES_LABELS[p.species]}</span>
+            <span class="plant-name">${escapeHtml(p.name || '未命名')}</span>
             <div class="plant-actions">
               <button data-action="edit" aria-label="編輯" title="編輯">✎</button>
               <button data-action="delete" aria-label="刪除" title="刪除">🗑</button>
             </div>
           </div>
+          <span class="plant-species-tag">${SPECIES_LABELS[p.species]}</span>
           <span class="plant-meta">購入 ${fmtDate(p.purchaseDate)}${p.purchasePrice ? ` · ${p.purchasePrice} 元` : ''}</span>
           ${p.note ? `<span class="plant-note">${escapeHtml(p.note)}</span>` : ''}
           <div class="plant-care-rows">
@@ -500,18 +573,6 @@ plantListEl.addEventListener('click', (e) => {
 plantListFilter.addEventListener('change', () => {
   renderPlantList();
   hydratePlantPhotos();
-});
-
-function applyPlantListCollapsed() {
-  document.getElementById('plantListBody').hidden = plantListCollapsed;
-  document.getElementById('plantListToggleIcon').textContent = plantListCollapsed ? '▸' : '▾';
-  document.getElementById('plantListToggleBtn').setAttribute('aria-expanded', String(!plantListCollapsed));
-}
-
-document.getElementById('plantListToggleBtn').addEventListener('click', () => {
-  plantListCollapsed = !plantListCollapsed;
-  localStorage.setItem('sct_plantlist_collapsed', plantListCollapsed ? '1' : '0');
-  applyPlantListCollapsed();
 });
 
 // ---- Summary & trend chart ----
@@ -653,6 +714,7 @@ function openSettings() {
     document.getElementById(`waterMin_${sp}`).value = settings[sp].waterMin;
     document.getElementById(`waterMax_${sp}`).value = settings[sp].waterMax;
     document.getElementById(`fertilizeMax_${sp}`).value = settings[sp].fertilizeMax;
+    document.getElementById(`categoryNote_${sp}`).value = categoryNotes[sp] || '';
   });
   settingsModal.hidden = false;
 }
@@ -673,10 +735,59 @@ document.getElementById('settingsForm').addEventListener('submit', (e) => {
       waterMax: Number(document.getElementById(`waterMax_${sp}`).value) || 1,
       fertilizeMax: Number(document.getElementById(`fertilizeMax_${sp}`).value) || 1,
     };
+    categoryNotes[sp] = document.getElementById(`categoryNote_${sp}`).value;
   });
   saveSettings(settings);
+  saveCategoryNotes(categoryNotes);
   closeSettings();
   showToast('設定已儲存');
+  renderAll();
+});
+
+// ---- Settings: 刪除 (data reset) ----
+
+document.getElementById('resetCareBtn').addEventListener('click', () => {
+  if (!confirm('確定要清除所有澆水與施肥紀錄嗎？此操作無法復原。')) return;
+  plants = plants.map((p) => ({ ...p, lastWatered: null, lastFertilized: null }));
+  savePlants(plants);
+  categoryCare = defaultCategoryCare();
+  saveCategoryCare(categoryCare);
+  closeSettings();
+  showToast('已清除所有澆水與施肥紀錄');
+  renderAll();
+});
+
+document.getElementById('resetAllBtn').addEventListener('click', async () => {
+  if (!confirm('確定要刪除所有資料，恢復成尚未使用的狀態嗎？此操作無法復原。')) return;
+  plants = [];
+  savePlants(plants);
+  categoryNotes = defaultCategoryNotes();
+  saveCategoryNotes(categoryNotes);
+  categoryCare = defaultCategoryCare();
+  saveCategoryCare(categoryCare);
+  settings = defaultSettings();
+  saveSettings(settings);
+  await clearAllPhotos();
+  resetPlantForm();
+  closeSettings();
+  showToast('已重置所有資料');
+  renderAll();
+});
+
+document.getElementById('deleteAfterBtn').addEventListener('click', async () => {
+  const dateInput = document.getElementById('deleteAfterDate');
+  const dateVal = dateInput.value;
+  if (!dateVal) { showToast('請先選擇日期'); return; }
+  if (!confirm(`確定要刪除 ${dateVal} 以後新增的植物資料嗎？此操作無法復原。`)) return;
+  const toRemove = plants.filter((p) => p.purchaseDate >= dateVal);
+  for (const p of toRemove) {
+    if (p.photoId) await deletePhoto(p.photoId).catch(() => {});
+  }
+  plants = plants.filter((p) => p.purchaseDate < dateVal);
+  savePlants(plants);
+  dateInput.value = '';
+  closeSettings();
+  showToast(`已刪除 ${toRemove.length} 筆資料`);
   renderAll();
 });
 
@@ -707,7 +818,6 @@ function renderAll() {
 }
 
 resetPlantForm();
-applyPlantListCollapsed();
 renderAll();
 
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
