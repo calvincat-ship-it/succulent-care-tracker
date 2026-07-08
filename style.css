@@ -254,7 +254,7 @@ input:focus, select:focus {
 }
 
 .settings-species-label {
-  flex: 0 0 52px;
+  flex: 0 0 64px;
   font-size: 13px;
   font-weight: 600;
   padding-bottom: 9px;

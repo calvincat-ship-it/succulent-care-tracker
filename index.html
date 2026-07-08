@@ -42,11 +42,7 @@
         <input type="text" id="fieldPlantName" maxlength="30" placeholder="為這盆植物取個名字" required>
       </label>
       <label class="full">種類
-        <select id="fieldSpecies" required>
-          <option value="succulent">景天科</option>
-          <option value="cactus">仙人球</option>
-          <option value="haworthia">玉露</option>
-        </select>
+        <select id="fieldSpecies" required></select>
       </label>
       <div class="form-row">
         <label>購入日期
@@ -85,9 +81,6 @@
       <span></span>
       <select id="plantListFilter">
         <option value="all">全部</option>
-        <option value="succulent">景天科</option>
-        <option value="cactus">仙人球</option>
-        <option value="haworthia">玉露</option>
       </select>
     </div>
     <div id="plantListBody">
@@ -118,13 +111,7 @@
 
     <div class="chart-header">
       <h3>趨勢圖</h3>
-      <select id="trendSelect">
-        <option value="totalCount">總數量</option>
-        <option value="succulentCount">景天科數量</option>
-        <option value="cactusCount">仙人球數量</option>
-        <option value="haworthiaCount">玉露數量</option>
-        <option value="totalPrice">總金額</option>
-      </select>
+      <select id="trendSelect"></select>
     </div>
     <canvas id="trendChart" height="180"></canvas>
   </div>
@@ -138,53 +125,17 @@
     </div>
     <form id="settingsForm">
       <h3 class="settings-section-title">各類植物應澆水天數設定</h3>
-      <div class="settings-species-row" data-species="succulent">
-        <span class="settings-species-label">景天科</span>
-        <label>下限 <input type="number" id="waterMin_succulent" min="0" max="365"></label>
-        <label>上限 <input type="number" id="waterMax_succulent" min="0" max="365"></label>
-      </div>
-      <div class="settings-species-row" data-species="cactus">
-        <span class="settings-species-label">仙人球</span>
-        <label>下限 <input type="number" id="waterMin_cactus" min="0" max="365"></label>
-        <label>上限 <input type="number" id="waterMax_cactus" min="0" max="365"></label>
-      </div>
-      <div class="settings-species-row" data-species="haworthia">
-        <span class="settings-species-label">玉露</span>
-        <label>下限 <input type="number" id="waterMin_haworthia" min="0" max="365"></label>
-        <label>上限 <input type="number" id="waterMax_haworthia" min="0" max="365"></label>
-      </div>
+      <div id="settingsWaterRows"></div>
 
       <hr class="settings-divider">
 
       <h3 class="settings-section-title">各類植物應施肥天數設定</h3>
-      <div class="settings-species-row" data-species="succulent">
-        <span class="settings-species-label">景天科</span>
-        <label>上限 <input type="number" id="fertilizeMax_succulent" min="0" max="365"></label>
-      </div>
-      <div class="settings-species-row" data-species="cactus">
-        <span class="settings-species-label">仙人球</span>
-        <label>上限 <input type="number" id="fertilizeMax_cactus" min="0" max="365"></label>
-      </div>
-      <div class="settings-species-row" data-species="haworthia">
-        <span class="settings-species-label">玉露</span>
-        <label>上限 <input type="number" id="fertilizeMax_haworthia" min="0" max="365"></label>
-      </div>
+      <div id="settingsFertilizeRows"></div>
 
       <hr class="settings-divider">
 
       <h3 class="settings-section-title">各類植物照護注意事項</h3>
-      <div class="settings-note-row" data-species="succulent">
-        <span class="settings-species-label">景天科</span>
-        <textarea id="categoryNote_succulent" class="category-note" placeholder="照護注意事項（日照、澆水、施肥）"></textarea>
-      </div>
-      <div class="settings-note-row" data-species="cactus">
-        <span class="settings-species-label">仙人球</span>
-        <textarea id="categoryNote_cactus" class="category-note" placeholder="照護注意事項（日照、澆水、施肥）"></textarea>
-      </div>
-      <div class="settings-note-row" data-species="haworthia">
-        <span class="settings-species-label">玉露</span>
-        <textarea id="categoryNote_haworthia" class="category-note" placeholder="照護注意事項（日照、澆水、施肥）"></textarea>
-      </div>
+      <div id="settingsNoteRows"></div>
 
       <div class="form-actions">
         <button type="submit" class="primary-btn">確認</button>

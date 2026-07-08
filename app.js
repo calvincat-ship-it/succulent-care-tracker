@@ -5,8 +5,29 @@ const SETTINGS_KEY = 'sct_settings_v1';
 const PHOTO_DB_NAME = 'sct_photos_db';
 const PHOTO_STORE = 'photos';
 
-const SPECIES_LIST = ['succulent', 'cactus', 'haworthia'];
-const SPECIES_LABELS = { succulent: '景天科', cactus: '仙人球', haworthia: '玉露' };
+const SPECIES_LIST = ['succulent', 'cactus', 'haworthia', 'asparagaceae', 'bromeliaceae', 'aizoaceae', 'euphorbiaceae', 'agave', 'apocynaceae'];
+const SPECIES_LABELS = {
+  succulent: '景天科',
+  cactus: '仙人球',
+  haworthia: '百合科',
+  asparagaceae: '天門冬科',
+  bromeliaceae: '鳳梨科',
+  aizoaceae: '番杏科',
+  euphorbiaceae: '大戟科',
+  agave: '龍舌蘭',
+  apocynaceae: '夾竹桃科',
+};
+const SPECIES_COLORS = {
+  succulent: '#3f7d5c',
+  cactus: '#c98a3e',
+  haworthia: '#3a8de0',
+  asparagaceae: '#6b8f47',
+  bromeliaceae: '#e0607a',
+  aizoaceae: '#d4a017',
+  euphorbiaceae: '#7a5c9e',
+  agave: '#4fa8a0',
+  apocynaceae: '#b85c50',
+};
 
 /** @typedef {{id:string,name:string,species:string,photoId:string|null,purchaseDate:string,purchasePrice:number,note:string,lastWatered:string|null,lastFertilized:string|null,createdAt:string,deleted:boolean,deletedAt:string|null}} Plant */
 
@@ -105,7 +126,7 @@ function savePlants(list) {
 }
 
 function defaultCategoryNotes() {
-  return { succulent: '', cactus: '', haworthia: '' };
+  return SPECIES_LIST.reduce((acc, sp) => { acc[sp] = ''; return acc; }, {});
 }
 
 function loadCategoryNotes() {
@@ -121,11 +142,7 @@ function saveCategoryNotes(notes) {
 }
 
 function defaultCategoryCare() {
-  return {
-    succulent: { lastWatered: null, lastFertilized: null },
-    cactus: { lastWatered: null, lastFertilized: null },
-    haworthia: { lastWatered: null, lastFertilized: null },
-  };
+  return SPECIES_LIST.reduce((acc, sp) => { acc[sp] = { lastWatered: null, lastFertilized: null }; return acc; }, {});
 }
 
 function loadCategoryCare() {
@@ -148,6 +165,12 @@ function defaultSettings() {
     succulent: { waterMin: 5, waterMax: 14, fertilizeMax: 60 },
     cactus: { waterMin: 7, waterMax: 21, fertilizeMax: 60 },
     haworthia: { waterMin: 5, waterMax: 14, fertilizeMax: 60 },
+    asparagaceae: { waterMin: 5, waterMax: 14, fertilizeMax: 60 },
+    bromeliaceae: { waterMin: 3, waterMax: 10, fertilizeMax: 60 },
+    aizoaceae: { waterMin: 10, waterMax: 30, fertilizeMax: 90 },
+    euphorbiaceae: { waterMin: 7, waterMax: 21, fertilizeMax: 60 },
+    agave: { waterMin: 10, waterMax: 28, fertilizeMax: 90 },
+    apocynaceae: { waterMin: 7, waterMax: 21, fertilizeMax: 60 },
   };
 }
 
@@ -647,10 +670,12 @@ function renderChart() {
   const kind = trendSelect.value;
   let data, color;
   if (kind === 'totalCount') { data = buildCountSeries(() => true); color = '#3f7d5c'; }
-  else if (kind === 'succulentCount') { data = buildCountSeries((p) => p.species === 'succulent'); color = '#3f7d5c'; }
-  else if (kind === 'cactusCount') { data = buildCountSeries((p) => p.species === 'cactus'); color = '#c98a3e'; }
-  else if (kind === 'haworthiaCount') { data = buildCountSeries((p) => p.species === 'haworthia'); color = '#3a8de0'; }
-  else { data = buildPriceSeries(() => true); color = '#8a6dc9'; }
+  else if (kind === 'totalPrice') { data = buildPriceSeries(() => true); color = '#8a6dc9'; }
+  else {
+    const sp = kind.slice('count:'.length);
+    data = buildCountSeries((p) => p.species === sp);
+    color = SPECIES_COLORS[sp] || '#3f7d5c';
+  }
 
   if (data.length === 0) {
     ctx.fillStyle = '#9aa8a0';
@@ -833,6 +858,38 @@ function renderAll() {
   renderChart();
 }
 
+function buildSpeciesDrivenUI() {
+  const speciesOptionsHtml = SPECIES_LIST.map((sp) => `<option value="${sp}">${SPECIES_LABELS[sp]}</option>`).join('');
+  document.getElementById('fieldSpecies').innerHTML = speciesOptionsHtml;
+  plantListFilter.innerHTML = '<option value="all">全部</option>' + speciesOptionsHtml;
+  trendSelect.innerHTML = '<option value="totalCount">總數量</option>'
+    + SPECIES_LIST.map((sp) => `<option value="count:${sp}">${SPECIES_LABELS[sp]}數量</option>`).join('')
+    + '<option value="totalPrice">總金額</option>';
+
+  document.getElementById('settingsWaterRows').innerHTML = SPECIES_LIST.map((sp) => `
+    <div class="settings-species-row" data-species="${sp}">
+      <span class="settings-species-label">${SPECIES_LABELS[sp]}</span>
+      <label>下限 <input type="number" id="waterMin_${sp}" min="0" max="365"></label>
+      <label>上限 <input type="number" id="waterMax_${sp}" min="0" max="365"></label>
+    </div>
+  `).join('');
+
+  document.getElementById('settingsFertilizeRows').innerHTML = SPECIES_LIST.map((sp) => `
+    <div class="settings-species-row" data-species="${sp}">
+      <span class="settings-species-label">${SPECIES_LABELS[sp]}</span>
+      <label>上限 <input type="number" id="fertilizeMax_${sp}" min="0" max="365"></label>
+    </div>
+  `).join('');
+
+  document.getElementById('settingsNoteRows').innerHTML = SPECIES_LIST.map((sp) => `
+    <div class="settings-note-row" data-species="${sp}">
+      <span class="settings-species-label">${SPECIES_LABELS[sp]}</span>
+      <textarea id="categoryNote_${sp}" class="category-note" placeholder="照護注意事項（日照、澆水、施肥）"></textarea>
+    </div>
+  `).join('');
+}
+
+buildSpeciesDrivenUI();
 resetPlantForm();
 renderAll();
 
