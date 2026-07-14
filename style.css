@@ -390,6 +390,44 @@ input:focus, select:focus {
 
 /* ---- Category card carousel ---- */
 
+.carousel-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 6px;
+}
+
+.carousel-wrap.vertical {
+  flex-direction: column;
+}
+
+.carousel-wrap.horizontal {
+  flex-direction: row;
+}
+
+.carousel-nav-btn {
+  flex: none;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.carousel-wrap.vertical .carousel-nav-btn {
+  width: 100%;
+  height: 32px;
+}
+
+.carousel-wrap.horizontal .carousel-nav-btn {
+  width: 32px;
+  height: 100%;
+}
+
 .category-carousel {
   flex: 1;
   min-height: 0;

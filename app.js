@@ -269,7 +269,10 @@ const editPlantIdInput = document.getElementById('editPlantId');
 const plantSubmitBtn = document.getElementById('plantSubmitBtn');
 const plantFormTitle = document.getElementById('plantFormTitle');
 const cancelPlantEditBtn = document.getElementById('cancelPlantEditBtn');
+const carouselWrapEl = document.getElementById('carouselWrap');
 const categoryCarouselEl = document.getElementById('categoryCarousel');
+const carouselPrevBtn = document.getElementById('carouselPrevBtn');
+const carouselNextBtn = document.getElementById('carouselNextBtn');
 const categoryCardsEl = document.getElementById('categoryCards');
 const categoryDotsEl = document.getElementById('categoryDots');
 const plantListEl = document.getElementById('plantList');
@@ -470,6 +473,10 @@ plantForm.addEventListener('submit', async (e) => {
 
 function renderCategoryCards() {
   if (carouselIndex >= SPECIES_LIST.length) carouselIndex = 0;
+  const isHorizontal = uiSettings.direction === 'horizontal';
+  carouselWrapEl.className = 'carousel-wrap ' + uiSettings.direction;
+  carouselPrevBtn.textContent = isHorizontal ? '◀' : '▲';
+  carouselNextBtn.textContent = isHorizontal ? '▶' : '▼';
   categoryCardsEl.className = 'category-track ' + uiSettings.direction;
   categoryCardsEl.innerHTML = SPECIES_LIST.map(renderCategoryCard).join('');
   renderCarouselDots();
@@ -547,6 +554,9 @@ function goToCarouselSlide(delta) {
   renderCarouselDots();
   updateCarouselPosition(true);
 }
+
+carouselPrevBtn.addEventListener('click', () => goToCarouselSlide(-1));
+carouselNextBtn.addEventListener('click', () => goToCarouselSlide(1));
 
 categoryCarouselEl.addEventListener('pointerdown', (e) => {
   carouselDrag = { startX: e.clientX, startY: e.clientY, offset: 0, moved: false, pointerId: e.pointerId };
