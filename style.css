@@ -319,6 +319,28 @@ input:focus, select:focus {
   margin-top: 4px;
 }
 
+.care-scope-sheet {
+  max-width: 420px;
+}
+
+.care-scope-message {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  margin: 4px 0 16px;
+}
+
+.care-scope-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.care-scope-actions .text-danger-btn {
+  align-self: center;
+  margin-top: 2px;
+}
+
 .danger-btn {
   padding: 12px;
   border-radius: 10px;

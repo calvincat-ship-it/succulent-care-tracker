@@ -626,23 +626,84 @@ categoryCardsEl.addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-action]');
   if (!btn) return;
   const species = btn.dataset.species;
-  const today = todayStr();
   if (btn.dataset.action === 'water-all') {
-    plants = plants.map((p) => (!p.deleted && p.species === species) ? { ...p, lastWatered: today } : p);
-    savePlants(plants);
-    categoryCare[species].lastWatered = today;
-    saveCategoryCare(categoryCare);
-    showToast(`已將全部${SPECIES_LABELS[species]}標記為已澆水`);
-    renderAll();
+    requestCategoryCare(species, 'lastWatered');
   } else if (btn.dataset.action === 'fertilize-all') {
-    plants = plants.map((p) => (!p.deleted && p.species === species) ? { ...p, lastFertilized: today } : p);
-    savePlants(plants);
-    categoryCare[species].lastFertilized = today;
-    saveCategoryCare(categoryCare);
-    showToast(`已將全部${SPECIES_LABELS[species]}標記為已施肥`);
-    renderAll();
+    requestCategoryCare(species, 'lastFertilized');
   }
 });
+
+// ---- Category care apply (with individual-mismatch guard) ----
+
+const CARE_META = {
+  lastWatered: { verb: '澆水', done: '已澆水' },
+  lastFertilized: { verb: '施肥', done: '已施肥' },
+};
+
+function requestCategoryCare(species, field) {
+  const prevDate = categoryCare[species][field];
+  const inCategory = plants.filter((p) => !p.deleted && p.species === species);
+  const mismatched = inCategory.filter((p) => p[field] !== prevDate);
+  if (mismatched.length === 0) {
+    applyCategoryCare(species, field, 'all');
+  } else {
+    openCareScope(species, field, mismatched.length);
+  }
+}
+
+function applyCategoryCare(species, field, scope) {
+  const prevDate = categoryCare[species][field];
+  const today = todayStr();
+  plants = plants.map((p) => {
+    if (p.deleted || p.species !== species) return p;
+    if (scope === 'matching' && p[field] !== prevDate) return p;
+    return { ...p, [field]: today };
+  });
+  savePlants(plants);
+  categoryCare[species][field] = today;
+  saveCategoryCare(categoryCare);
+  showToast(`已將全部${SPECIES_LABELS[species]}標記為${CARE_META[field].done}`);
+  renderAll();
+}
+
+// ---- Care scope modal ----
+
+const careScopeModal = document.getElementById('careScopeModal');
+let pendingCareScope = null;
+
+function openCareScope(species, field, mismatchCount) {
+  pendingCareScope = { species, field };
+  const meta = CARE_META[field];
+  document.getElementById('careScopeTitle').textContent = `${meta.verb}套用範圍`;
+  document.getElementById('careScopeMessage').textContent =
+    `此分類下有 ${mismatchCount} 盆多肉曾分別${meta.verb}，時間與分類卡片不同。是否要套用到分類下所有多肉？`;
+  document.getElementById('careScopeApplyAllBtn').textContent = '套用分類下所有多肉';
+  document.getElementById('careScopeApplyMatchingBtn').textContent = `不套用個別${meta.verb}的多肉`;
+  careScopeModal.hidden = false;
+}
+
+function closeCareScope() {
+  careScopeModal.hidden = true;
+  pendingCareScope = null;
+}
+
+document.getElementById('careScopeApplyAllBtn').addEventListener('click', () => {
+  if (!pendingCareScope) return;
+  const { species, field } = pendingCareScope;
+  closeCareScope();
+  applyCategoryCare(species, field, 'all');
+});
+
+document.getElementById('careScopeApplyMatchingBtn').addEventListener('click', () => {
+  if (!pendingCareScope) return;
+  const { species, field } = pendingCareScope;
+  closeCareScope();
+  applyCategoryCare(species, field, 'matching');
+});
+
+document.getElementById('careScopeCancelBtn').addEventListener('click', closeCareScope);
+document.getElementById('closeCareScopeBtn').addEventListener('click', closeCareScope);
+careScopeModal.addEventListener('click', (e) => { if (e.target === careScopeModal) closeCareScope(); });
 
 function clearCategoryPhotoCarousels() {
   Object.values(categoryCarouselTimers).forEach(clearInterval);
