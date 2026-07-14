@@ -25,7 +25,10 @@
 </header>
 
 <main>
-  <section id="categoryCards"></section>
+  <section id="categoryCarousel" class="category-carousel">
+    <div id="categoryCards" class="category-track"></div>
+  </section>
+  <div id="categoryDots" class="category-dots"></div>
 </main>
 
 <div id="toast" class="toast" hidden></div>
@@ -124,6 +127,14 @@
       <button type="button" id="closeSettingsBtn" class="icon-btn" aria-label="關閉">✕</button>
     </div>
     <form id="settingsForm">
+      <h3 class="settings-section-title">分類卡片滑動方向</h3>
+      <div class="settings-direction-row">
+        <label><input type="radio" name="carouselDirection" value="vertical"> 垂直滑動</label>
+        <label><input type="radio" name="carouselDirection" value="horizontal"> 橫向滑動</label>
+      </div>
+
+      <hr class="settings-divider">
+
       <h3 class="settings-section-title">各類植物應澆水天數設定</h3>
       <div id="settingsWaterRows"></div>
 

@@ -2,6 +2,7 @@ const PLANTS_KEY = 'sct_plants_v1';
 const CATEGORY_NOTES_KEY = 'sct_category_notes_v1';
 const CATEGORY_CARE_KEY = 'sct_category_care_v1';
 const SETTINGS_KEY = 'sct_settings_v1';
+const UI_SETTINGS_KEY = 'sct_ui_settings_v1';
 const PHOTO_DB_NAME = 'sct_photos_db';
 const PHOTO_STORE = 'photos';
 
@@ -189,6 +190,22 @@ function saveSettings(s) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
 }
 
+function defaultUiSettings() {
+  return { direction: 'vertical' };
+}
+
+function loadUiSettings() {
+  try {
+    return { ...defaultUiSettings(), ...JSON.parse(localStorage.getItem(UI_SETTINGS_KEY)) };
+  } catch {
+    return defaultUiSettings();
+  }
+}
+
+function saveUiSettings(s) {
+  localStorage.setItem(UI_SETTINGS_KEY, JSON.stringify(s));
+}
+
 // ---- Helpers ----
 
 function todayStr() {
@@ -236,17 +253,25 @@ let plants = loadPlants();
 let categoryNotes = loadCategoryNotes();
 let categoryCare = loadCategoryCare();
 let settings = loadSettings();
+let uiSettings = loadUiSettings();
 let pendingPhotoBlob = null;
 let pendingPhotoRemoved = false;
 let currentPhotoId = null;
 let plantPhotoUrls = [];
+let categoryPhotoUrls = [];
+let categoryCarouselTimers = {};
+let carouselIndex = 0;
+let carouselDrag = null;
+let suppressNextCategoryClick = false;
 
 const plantForm = document.getElementById('plantForm');
 const editPlantIdInput = document.getElementById('editPlantId');
 const plantSubmitBtn = document.getElementById('plantSubmitBtn');
 const plantFormTitle = document.getElementById('plantFormTitle');
 const cancelPlantEditBtn = document.getElementById('cancelPlantEditBtn');
+const categoryCarouselEl = document.getElementById('categoryCarousel');
 const categoryCardsEl = document.getElementById('categoryCards');
+const categoryDotsEl = document.getElementById('categoryDots');
 const plantListEl = document.getElementById('plantList');
 const plantEmptyState = document.getElementById('plantEmptyState');
 const plantListFilter = document.getElementById('plantListFilter');
@@ -444,7 +469,11 @@ plantForm.addEventListener('submit', async (e) => {
 // ---- Category cards ----
 
 function renderCategoryCards() {
+  if (carouselIndex >= SPECIES_LIST.length) carouselIndex = 0;
+  categoryCardsEl.className = 'category-track ' + uiSettings.direction;
   categoryCardsEl.innerHTML = SPECIES_LIST.map(renderCategoryCard).join('');
+  renderCarouselDots();
+  updateCarouselPosition(false);
 }
 
 function renderCategoryCard(species) {
@@ -454,12 +483,13 @@ function renderCategoryCard(species) {
   const cfg = settings[species];
   const lastWatered = categoryCare[species].lastWatered;
   const lastFertilized = categoryCare[species].lastFertilized;
-  const waterInfo = count > 0 ? classifyWatering(lastWatered, cfg) : { cls: 'overdue', label: '尚無植物', days: null };
-  const fertInfo = count > 0 ? classifyFertilizing(lastFertilized, cfg) : { cls: 'overdue', label: '尚無植物', days: null };
+  const waterInfo = (count === 0 && !lastWatered) ? { cls: 'overdue', label: '尚無植物', days: null } : classifyWatering(lastWatered, cfg);
+  const fertInfo = (count === 0 && !lastFertilized) ? { cls: 'overdue', label: '尚無植物', days: null } : classifyFertilizing(lastFertilized, cfg);
   const note = categoryNotes[species] || '';
 
   return `
     <div class="card category-card" data-species="${species}">
+      <div class="category-photo-carousel" data-species="${species}">🌱</div>
       <div class="category-card-header">
         <h2>${label}</h2>
         <span class="category-count">${count} 盆</span>
@@ -470,20 +500,106 @@ function renderCategoryCard(species) {
           <span class="care-label">澆水・上次 ${fmtDate(lastWatered)}${waterInfo.days != null ? `（距今 ${waterInfo.days} 天）` : ''}</span>
           <span class="care-warning care-${waterInfo.cls}">${waterInfo.label}</span>
         </div>
-        <button type="button" class="care-confirm-btn" data-action="water-all" data-species="${species}" ${count === 0 ? 'disabled' : ''}>全部已澆水</button>
+        <button type="button" class="care-confirm-btn" data-action="water-all" data-species="${species}">全部已澆水</button>
       </div>
       <div class="care-row">
         <div class="care-info">
           <span class="care-label">施肥・上次 ${fmtDate(lastFertilized)}${fertInfo.days != null ? `（距今 ${fertInfo.days} 天）` : ''}</span>
           <span class="care-warning care-${fertInfo.cls}">${fertInfo.label}</span>
         </div>
-        <button type="button" class="care-confirm-btn" data-action="fertilize-all" data-species="${species}" ${count === 0 ? 'disabled' : ''}>全部已施肥</button>
+        <button type="button" class="care-confirm-btn" data-action="fertilize-all" data-species="${species}">全部已施肥</button>
       </div>
     </div>
   `;
 }
 
+// ---- Category card carousel (swipe navigation) ----
+
+function renderCarouselDots() {
+  categoryDotsEl.innerHTML = SPECIES_LIST.map((sp, i) =>
+    `<button type="button" class="category-dot${i === carouselIndex ? ' active' : ''}" data-index="${i}" aria-label="${SPECIES_LABELS[sp]}"></button>`
+  ).join('');
+}
+
+categoryDotsEl.addEventListener('click', (e) => {
+  const dot = e.target.closest('.category-dot');
+  if (!dot) return;
+  carouselIndex = Number(dot.dataset.index);
+  renderCarouselDots();
+  updateCarouselPosition(true);
+});
+
+function updateCarouselPosition(animate) {
+  const slides = [...categoryCardsEl.children];
+  const activeSlide = slides[carouselIndex];
+  if (!activeSlide) return;
+  categoryCardsEl.style.transition = animate ? 'transform 0.3s ease' : 'none';
+  if (uiSettings.direction === 'horizontal') {
+    const containerWidth = categoryCarouselEl.clientWidth;
+    categoryCardsEl.style.transform = `translateX(-${carouselIndex * containerWidth}px)`;
+  } else {
+    let offset = 0;
+    for (let i = 0; i < carouselIndex; i++) offset += slides[i].offsetHeight;
+    categoryCardsEl.style.transform = `translateY(-${offset}px)`;
+  }
+  categoryCarouselEl.style.height = activeSlide.offsetHeight + 'px';
+}
+
+function goToCarouselSlide(delta) {
+  const len = SPECIES_LIST.length;
+  carouselIndex = (carouselIndex + delta + len) % len;
+  renderCarouselDots();
+  updateCarouselPosition(true);
+}
+
+categoryCarouselEl.addEventListener('pointerdown', (e) => {
+  carouselDrag = { startX: e.clientX, startY: e.clientY, offset: 0, moved: false, pointerId: e.pointerId };
+  categoryCardsEl.style.transition = 'none';
+});
+
+categoryCarouselEl.addEventListener('pointermove', (e) => {
+  if (!carouselDrag || e.pointerId !== carouselDrag.pointerId) return;
+  const slides = [...categoryCardsEl.children];
+  if (uiSettings.direction === 'horizontal') {
+    carouselDrag.offset = e.clientX - carouselDrag.startX;
+    if (Math.abs(carouselDrag.offset) > 10) carouselDrag.moved = true;
+    if (!carouselDrag.moved) return;
+    const containerWidth = categoryCarouselEl.clientWidth;
+    categoryCardsEl.style.transform = `translateX(${-(carouselIndex * containerWidth) + carouselDrag.offset}px)`;
+  } else {
+    carouselDrag.offset = e.clientY - carouselDrag.startY;
+    if (Math.abs(carouselDrag.offset) > 10) carouselDrag.moved = true;
+    if (!carouselDrag.moved) return;
+    let offset = 0;
+    for (let i = 0; i < carouselIndex; i++) offset += slides[i].offsetHeight;
+    categoryCardsEl.style.transform = `translateY(${-offset + carouselDrag.offset}px)`;
+  }
+  e.preventDefault();
+});
+
+function endCarouselDrag() {
+  if (!carouselDrag) return;
+  const { offset, moved } = carouselDrag;
+  const threshold = 50;
+  if (moved && Math.abs(offset) > threshold) {
+    suppressNextCategoryClick = true;
+    goToCarouselSlide(offset < 0 ? 1 : -1);
+  } else {
+    updateCarouselPosition(true);
+  }
+  carouselDrag = null;
+}
+
+categoryCarouselEl.addEventListener('pointerup', endCarouselDrag);
+categoryCarouselEl.addEventListener('pointercancel', endCarouselDrag);
+
 categoryCardsEl.addEventListener('click', (e) => {
+  if (suppressNextCategoryClick) {
+    suppressNextCategoryClick = false;
+    e.stopPropagation();
+    e.preventDefault();
+    return;
+  }
   const btn = e.target.closest('button[data-action]');
   if (!btn) return;
   const species = btn.dataset.species;
@@ -504,6 +620,42 @@ categoryCardsEl.addEventListener('click', (e) => {
     renderAll();
   }
 });
+
+function clearCategoryPhotoCarousels() {
+  Object.values(categoryCarouselTimers).forEach(clearInterval);
+  categoryCarouselTimers = {};
+  categoryPhotoUrls.forEach((u) => URL.revokeObjectURL(u));
+  categoryPhotoUrls = [];
+}
+
+async function hydrateCategoryPhotoCarousels() {
+  clearCategoryPhotoCarousels();
+  for (const species of SPECIES_LIST) {
+    const slot = categoryCardsEl.querySelector(`.category-photo-carousel[data-species="${species}"]`);
+    if (!slot) continue;
+    const photoIds = plants
+      .filter((p) => !p.deleted && p.species === species && p.photoId)
+      .map((p) => p.photoId);
+    if (photoIds.length === 0) continue;
+    const urls = [];
+    for (const id of photoIds) {
+      const blob = await getPhoto(id);
+      if (blob) urls.push(URL.createObjectURL(blob));
+    }
+    if (urls.length === 0) continue;
+    categoryPhotoUrls.push(...urls);
+    slot.innerHTML = `<img class="category-photo" src="${urls[0]}" alt="${SPECIES_LABELS[species]}照片">`;
+    if (urls.length > 1) {
+      let idx = 0;
+      categoryCarouselTimers[species] = setInterval(() => {
+        idx = (idx + 1) % urls.length;
+        const img = slot.querySelector('img');
+        if (img) img.src = urls[idx];
+      }, 5000);
+    }
+  }
+  updateCarouselPosition(false);
+}
 
 // ---- Plant list ----
 
@@ -736,7 +888,10 @@ function renderChart() {
 }
 
 trendSelect.addEventListener('change', renderChart);
-window.addEventListener('resize', () => renderChart());
+window.addEventListener('resize', () => {
+  renderChart();
+  updateCarouselPosition(false);
+});
 
 // ---- Settings ----
 
@@ -749,6 +904,8 @@ function openSettings() {
     document.getElementById(`fertilizeMax_${sp}`).value = settings[sp].fertilizeMax;
     document.getElementById(`categoryNote_${sp}`).value = categoryNotes[sp] || '';
   });
+  const radio = document.querySelector(`input[name="carouselDirection"][value="${uiSettings.direction}"]`);
+  if (radio) radio.checked = true;
   settingsModal.hidden = false;
 }
 
@@ -770,8 +927,11 @@ document.getElementById('settingsForm').addEventListener('submit', (e) => {
     };
     categoryNotes[sp] = document.getElementById(`categoryNote_${sp}`).value;
   });
+  const checkedDirection = document.querySelector('input[name="carouselDirection"]:checked');
+  if (checkedDirection) uiSettings.direction = checkedDirection.value;
   saveSettings(settings);
   saveCategoryNotes(categoryNotes);
+  saveUiSettings(uiSettings);
   closeSettings();
   showToast('設定已儲存');
   renderAll();
@@ -852,6 +1012,7 @@ document.getElementById('photoViewer').addEventListener('click', (e) => {
 
 function renderAll() {
   renderCategoryCards();
+  hydrateCategoryPhotoCarousels();
   renderPlantList();
   hydratePlantPhotos();
   renderSummary();

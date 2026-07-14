@@ -241,6 +241,19 @@ input:focus, select:focus {
   margin: 0;
 }
 
+.settings-direction-row {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.settings-direction-row label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .settings-divider {
   border: none;
   border-top: 1px solid var(--border);
@@ -360,6 +373,74 @@ input:focus, select:focus {
   top: 8px;
   right: 8px;
   background: rgba(0,0,0,0.5);
+}
+
+/* ---- Category card carousel ---- */
+
+.category-carousel {
+  overflow: hidden;
+  position: relative;
+  touch-action: none;
+}
+
+.category-track {
+  display: flex;
+  align-items: flex-start;
+}
+
+.category-track.vertical {
+  flex-direction: column;
+}
+
+.category-track.horizontal {
+  flex-direction: row;
+}
+
+.category-track > .category-card {
+  flex: 0 0 100%;
+  width: 100%;
+  margin-bottom: 0;
+}
+
+.category-dots {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 4px;
+}
+
+.category-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  background: var(--border);
+  cursor: pointer;
+}
+
+.category-dot.active {
+  background: var(--primary);
+}
+
+.category-photo-carousel {
+  width: 100%;
+  height: 140px;
+  border-radius: 10px;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.category-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 /* ---- Category cards ---- */
