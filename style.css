@@ -390,42 +390,46 @@ input:focus, select:focus {
 
 /* ---- Category card carousel ---- */
 
-.carousel-wrap {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  gap: 6px;
-}
-
-.carousel-wrap.vertical {
-  flex-direction: column;
-}
-
-.carousel-wrap.horizontal {
-  flex-direction: row;
-}
-
 .carousel-nav-btn {
-  flex: none;
-  background: var(--primary);
+  position: absolute;
+  z-index: 5;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.38);
   color: #fff;
   border: none;
-  border-radius: 10px;
-  font-size: 16px;
+  font-size: 15px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.carousel-wrap.vertical .carousel-nav-btn {
-  width: 100%;
-  height: 32px;
+.category-carousel.vertical .carousel-nav-btn {
+  left: 50%;
+  transform: translateX(-50%);
 }
 
-.carousel-wrap.horizontal .carousel-nav-btn {
-  width: 32px;
-  height: 100%;
+.category-carousel.vertical #carouselPrevBtn {
+  top: 8px;
+}
+
+.category-carousel.vertical #carouselNextBtn {
+  bottom: 8px;
+}
+
+.category-carousel.horizontal .carousel-nav-btn {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.category-carousel.horizontal #carouselPrevBtn {
+  left: 8px;
+}
+
+.category-carousel.horizontal #carouselNextBtn {
+  right: 8px;
 }
 
 .category-carousel {

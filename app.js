@@ -269,7 +269,6 @@ const editPlantIdInput = document.getElementById('editPlantId');
 const plantSubmitBtn = document.getElementById('plantSubmitBtn');
 const plantFormTitle = document.getElementById('plantFormTitle');
 const cancelPlantEditBtn = document.getElementById('cancelPlantEditBtn');
-const carouselWrapEl = document.getElementById('carouselWrap');
 const categoryCarouselEl = document.getElementById('categoryCarousel');
 const carouselPrevBtn = document.getElementById('carouselPrevBtn');
 const carouselNextBtn = document.getElementById('carouselNextBtn');
@@ -474,7 +473,7 @@ plantForm.addEventListener('submit', async (e) => {
 function renderCategoryCards() {
   if (carouselIndex >= SPECIES_LIST.length) carouselIndex = 0;
   const isHorizontal = uiSettings.direction === 'horizontal';
-  carouselWrapEl.className = 'carousel-wrap ' + uiSettings.direction;
+  categoryCarouselEl.className = 'category-carousel ' + uiSettings.direction;
   carouselPrevBtn.textContent = isHorizontal ? '◀' : '▲';
   carouselNextBtn.textContent = isHorizontal ? '▶' : '▼';
   categoryCardsEl.className = 'category-track ' + uiSettings.direction;
@@ -528,12 +527,18 @@ function renderCarouselDots() {
   ).join('');
 }
 
+function isAdjacentIndex(a, b) {
+  return Math.abs(a - b) === 1;
+}
+
 categoryDotsEl.addEventListener('click', (e) => {
   const dot = e.target.closest('.category-dot');
   if (!dot) return;
-  carouselIndex = Number(dot.dataset.index);
+  const newIndex = Number(dot.dataset.index);
+  const animate = isAdjacentIndex(newIndex, carouselIndex);
+  carouselIndex = newIndex;
   renderCarouselDots();
-  updateCarouselPosition(true);
+  updateCarouselPosition(animate);
 });
 
 function updateCarouselPosition(animate) {
@@ -550,13 +555,27 @@ function updateCarouselPosition(animate) {
 
 function goToCarouselSlide(delta) {
   const len = SPECIES_LIST.length;
+  const prevIndex = carouselIndex;
   carouselIndex = (carouselIndex + delta + len) % len;
+  const animate = isAdjacentIndex(carouselIndex, prevIndex);
   renderCarouselDots();
-  updateCarouselPosition(true);
+  updateCarouselPosition(animate);
 }
 
-carouselPrevBtn.addEventListener('click', () => goToCarouselSlide(-1));
-carouselNextBtn.addEventListener('click', () => goToCarouselSlide(1));
+function handleCarouselNavClick(delta) {
+  return (e) => {
+    if (suppressNextCategoryClick) {
+      suppressNextCategoryClick = false;
+      e.stopPropagation();
+      e.preventDefault();
+      return;
+    }
+    goToCarouselSlide(delta);
+  };
+}
+
+carouselPrevBtn.addEventListener('click', handleCarouselNavClick(-1));
+carouselNextBtn.addEventListener('click', handleCarouselNavClick(1));
 
 categoryCarouselEl.addEventListener('pointerdown', (e) => {
   carouselDrag = { startX: e.clientX, startY: e.clientY, offset: 0, moved: false, pointerId: e.pointerId };
