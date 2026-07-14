@@ -529,6 +529,12 @@ categoryDotsEl.addEventListener('click', (e) => {
   updateCarouselPosition(true);
 });
 
+const carouselHeightObserver = new ResizeObserver((entries) => {
+  for (const entry of entries) {
+    categoryCarouselEl.style.height = Math.ceil(entry.contentRect.height) + 'px';
+  }
+});
+
 function updateCarouselPosition(animate) {
   const slides = [...categoryCardsEl.children];
   const activeSlide = slides[carouselIndex];
@@ -543,6 +549,8 @@ function updateCarouselPosition(animate) {
     categoryCardsEl.style.transform = `translateY(-${offset}px)`;
   }
   categoryCarouselEl.style.height = activeSlide.offsetHeight + 'px';
+  carouselHeightObserver.disconnect();
+  carouselHeightObserver.observe(activeSlide);
 }
 
 function goToCarouselSlide(delta) {
