@@ -529,28 +529,16 @@ categoryDotsEl.addEventListener('click', (e) => {
   updateCarouselPosition(true);
 });
 
-const carouselHeightObserver = new ResizeObserver((entries) => {
-  for (const entry of entries) {
-    categoryCarouselEl.style.height = Math.ceil(entry.contentRect.height) + 'px';
-  }
-});
-
 function updateCarouselPosition(animate) {
-  const slides = [...categoryCardsEl.children];
-  const activeSlide = slides[carouselIndex];
-  if (!activeSlide) return;
+  if (!categoryCardsEl.children[carouselIndex]) return;
   categoryCardsEl.style.transition = animate ? 'transform 0.3s ease' : 'none';
   if (uiSettings.direction === 'horizontal') {
     const containerWidth = categoryCarouselEl.clientWidth;
     categoryCardsEl.style.transform = `translateX(-${carouselIndex * containerWidth}px)`;
   } else {
-    let offset = 0;
-    for (let i = 0; i < carouselIndex; i++) offset += slides[i].offsetHeight;
-    categoryCardsEl.style.transform = `translateY(-${offset}px)`;
+    const containerHeight = categoryCarouselEl.clientHeight;
+    categoryCardsEl.style.transform = `translateY(-${carouselIndex * containerHeight}px)`;
   }
-  categoryCarouselEl.style.height = activeSlide.offsetHeight + 'px';
-  carouselHeightObserver.disconnect();
-  carouselHeightObserver.observe(activeSlide);
 }
 
 function goToCarouselSlide(delta) {
@@ -567,7 +555,6 @@ categoryCarouselEl.addEventListener('pointerdown', (e) => {
 
 categoryCarouselEl.addEventListener('pointermove', (e) => {
   if (!carouselDrag || e.pointerId !== carouselDrag.pointerId) return;
-  const slides = [...categoryCardsEl.children];
   if (uiSettings.direction === 'horizontal') {
     carouselDrag.offset = e.clientX - carouselDrag.startX;
     if (Math.abs(carouselDrag.offset) > 10) carouselDrag.moved = true;
@@ -578,9 +565,8 @@ categoryCarouselEl.addEventListener('pointermove', (e) => {
     carouselDrag.offset = e.clientY - carouselDrag.startY;
     if (Math.abs(carouselDrag.offset) > 10) carouselDrag.moved = true;
     if (!carouselDrag.moved) return;
-    let offset = 0;
-    for (let i = 0; i < carouselIndex; i++) offset += slides[i].offsetHeight;
-    categoryCardsEl.style.transform = `translateY(${-offset + carouselDrag.offset}px)`;
+    const containerHeight = categoryCarouselEl.clientHeight;
+    categoryCardsEl.style.transform = `translateY(${-(carouselIndex * containerHeight) + carouselDrag.offset}px)`;
   }
   e.preventDefault();
 });
